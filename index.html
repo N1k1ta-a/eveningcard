@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Поймай сердечко ❤️</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    min-height: 100vh;
+    font-family: 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 40%, #3b1f3f 100%);
+    color: #f5f0ff;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 20px 16px;
+    overflow: hidden;
+  }
+
+  /* Фоновые сердечки */
+  .bg-heart {
+    position: fixed;
+    bottom: -40px;
+    opacity: 0;
+    animation: floatUp linear infinite;
+    pointer-events: none;
+    z-index: 0;
+  }
+  @keyframes floatUp {
+    0%   { transform: translateY(0) rotate(0deg); opacity: 0; }
+    10%  { opacity: 0.45; }
+    90%  { opacity: 0.25; }
+    100% { transform: translateY(-110vh) rotate(360deg); opacity: 0; }
+  }
+
+  .card {
+    position: relative;
+    z-index: 2;
+    max-width: 560px;
+    width: 100%;
+    background: rgba(255, 255, 255, 0.07);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 28px;
+    padding: 28px 22px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.45);
+    text-align: center;
+  }
+
+  h1 {
+    font-size: clamp(1.4rem, 4vw, 1.9rem);
+    font-weight: 600;
+    margin-bottom: 6px;
+    background: linear-gradient(90deg, #ff9ecb, #ffd6a5, #b8a9ff);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+
+  .subtitle {
+    font-size: 0.9rem;
+    color: #c9b8e8;
+    margin-bottom: 18px;
+  }
+
+  /* Игровое поле */
+  #game {
+    position: relative;
+    width: 100%;
+    height: 340px;
+    background: rgba(0, 0, 0, 0.22);
+    border: 1px dashed rgba(255, 255, 255, 0.18);
+    border-radius: 20px;
+    overflow: hidden;
+    cursor: pointer;
+    touch-action: manipulation;
+    user-select: none;
+  }
+
+  .heart {
+    position: absolute;
+    line-height: 1;
+    cursor: pointer;
+    user-select: none;
+    animation: popIn 0.25s ease;
+    transition: transform 0.08s ease;
+  }
+  .heart:active { transform: scale(0.85); }
+
+  @keyframes popIn {
+    from { transform: scale(0.3); opacity: 0; }
+    to   { transform: scale(1);   opacity: 1; }
+  }
+
+  /* Всплывающее тёплое слово */
+  .warm-word {
+    position: absolute;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #ffd6e8;
+    pointer-events: none;
+    white-space: nowrap;
+    animation: wordUp 1.3s ease forwards;
+    z-index: 5;
+    text-shadow: 0 2px 10px rgba(0,0,0,0.5);
+  }
+  @keyframes wordUp {
+    0%   { transform: translateY(0) scale(0.8); opacity: 0; }
+    15%  { transform: translateY(-8px) scale(1.05); opacity: 1; }
+    100% { transform: translateY(-70px) scale(1); opacity: 0; }
+  }
+
+  /* HUD */
+  .game-hud {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 12px;
+    font-size: 0.95rem;
+    color: #d9cdf5;
+  }
+  .game-hud strong {
+    color: #ffb3d9;
+    font-size: 1.15rem;
+  }
+  .game-hud .timer strong { color: #b8e0ff; }
+
+  /* Оверлеи */
+  .overlay {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 14px;
+    padding: 24px;
+    text-align: center;
+    background: rgba(26, 26, 46, 0.88);
+    backdrop-filter: blur(4px);
+    z-index: 10;
+    border-radius: 20px;
+  }
+  .overlay.hidden { display: none; }
+
+  .overlay p {
+    font-size: 1rem;
+    line-height: 1.55;
+    color: #ece5ff;
+    max-width: 360px;
+  }
+  .overlay .big {
+    font-size: 1.15rem;
+    color: #ffd6e8;
+    font-weight: 600;
+  }
+
+  .btn {
+    padding: 12px 30px;
+    font-size: 1rem;
+    font-family: inherit;
+    font-weight: 600;
+    color: #1a1a2e;
+    background: linear-gradient(135deg, #ffb3d9, #ffd6a5);
+    border: none;
+    border-radius: 999px;
+    cursor: pointer;
+    box-shadow: 0 6px 20px rgba(255, 179, 217, 0.35);
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+  }
+  .btn:hover {
+    transform: translateY(-2px) scale(1.03);
+    box-shadow: 0 10px 26px rgba(255, 179, 217, 0.5);
+  }
+  .btn:active { transform: scale(0.97); }
+
+  /* Конфетти */
+  .confetti-heart {
+    position: fixed;
+    pointer-events: none;
+    z-index: 999;
+    animation: confettiFall linear forwards;
+  }
+  @keyframes confettiFall {
+    from { transform: translateY(-10vh) rotate(0deg); opacity: 1; }
+    to   { transform: translateY(110vh) rotate(540deg); opacity: 0; }
+  }
+
+  @media (max-width: 480px) {
+    .card { padding: 20px 14px; border-radius: 22px; }
+    #game { height: 300px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="card">
+  <h1>Поймай сердечко</h1>
+  <p class="subtitle">15 секунд, немного тепла и одно важное сообщение в конце</p>
+
+  <div id="game">
+    <div class="overlay" id="startOverlay">
+      <p>Нажми «Начать» и лови сердечки — каждое скажет тебе что-то тёплое.</p>
+      <button class="btn" id="startBtn">Начать</button>
+    </div>
+
+    <div class="overlay hidden" id="endOverlay">
+      <p class="big" id="endTitle"></p>
+      <p id="endText"></p>
+      <button class="btn" id="restartBtn">Ещё раз</button>
+    </div>
+  </div>
+
+  <div class="game-hud">
+    <span>Поймано: <strong id="score">0</strong></span>
+    <span class="timer">Время: <strong id="timer">15</strong>с</span>
+  </div>
+</div>
+
+<script>
+(function () {
+  // ---------- Фон ----------
+  const bgEmojis = ['💗', '💖', '💕', '✨', '💫', '🌸'];
+  function spawnBgHeart() {
+    const el = document.createElement('div');
+    el.className = 'bg-heart';
+    el.textContent = bgEmojis[Math.floor(Math.random() * bgEmojis.length)];
+    el.style.left = Math.random() * 100 + 'vw';
+    el.style.fontSize = (14 + Math.random() * 18) + 'px';
+    el.style.animationDuration = (8 + Math.random() * 8) + 's';
+    el.style.animationDelay = (Math.random() * 4) + 's';
+    document.body.appendChild(el);
+    setTimeout(() => el.remove(), 16000);
+  }
+  setInterval(spawnBgHeart, 900);
+  for (let i = 0; i < 8; i++) setTimeout(spawnBgHeart, i * 300);
+
+  // ---------- Игра ----------
+  const game = document.getElementById('game');
+  const scoreEl = document.getElementById('score');
+  const timerEl = document.getElementById('timer');
+  const startOverlay = document.getElementById('startOverlay');
+  const endOverlay = document.getElementById('endOverlay');
+  const endTitle = document.getElementById('endTitle');
+  const endText = document.getElementById('endText');
+  const startBtn = document.getElementById('startBtn');
+  const restartBtn = document.getElementById('restartBtn');
+
+  const GAME_TIME = 15;
+  const SPAWN_INTERVAL = 620;
+
+  let score = 0;
+  let timeLeft = GAME_TIME;
+  let playing = false;
+  let spawnTimer = null;
+  let countdownTimer = null;
+
+  const heartEmojis = ['💖', '💗', '💕', '💘', '❤️', '💝'];
+
+  // Тёплые слова, которые всплывают при каждом пойманном сердечке
+  const warmWords = [
+    'умочка',
+    'милая моя',
+    'ты прекрасная',
+    'улыбнись',
+    'не грусти',
+    'я тутааа',
+    'мы вместе',
+    'люблю тебя'
+  ];
+  let wordIndex = 0;
+
+  function nextWarmWord() {
+    // Перемешиваем один раз, потом идём по кругу
+    if (wordIndex === 0) {
+      warmWords.sort(() => Math.random() - 0.5);
+    }
+    const w = warmWords[wordIndex % warmWords.length];
+    wordIndex++;
+    return w;
+  }
+
+  function updateHud() {
+    scoreEl.textContent = score;
+    timerEl.textContent = timeLeft;
+  }
+
+  function spawnHeart() {
+    if (!playing) return;
+
+    const heart = document.createElement('div');
+    heart.className = 'heart';
+    heart.textContent = heartEmojis[Math.floor(Math.random() * heartEmojis.length)];
+
+    const size = 26 + Math.random() * 22; // 26–48px
+    heart.style.fontSize = size + 'px';
+
+    const maxX = game.clientWidth - size;
+    const maxY = game.clientHeight - size;
+    heart.style.left = Math.random() * Math.max(0, maxX) + 'px';
+    heart.style.top = Math.random() * Math.max(0, maxY) + 'px';
+
+    const life = 1400 + Math.random() * 800;
+    const removeTimer = setTimeout(() => {
+      if (heart.parentNode) {
+        heart.style.transition = 'opacity 0.25s, transform 0.25s';
+        heart.style.opacity = '0';
+        heart.style.transform = 'scale(0.5)';
+        setTimeout(() => heart.remove(), 260);
+      }
+    }, life);
+
+    heart.addEventListener('pointerdown', function (e) {
+      e.preventDefault();
+      if (!playing) return;
+      clearTimeout(removeTimer);
+      catchHeart(heart, e);
+    }, { passive: false });
+
+    game.appendChild(heart);
+  }
+
+  function catchHeart(heart, e) {
+    score++;
+    updateHud();
+
+    // Тёплое слово вместо «+1»
+    const word = document.createElement('div');
+    word.className = 'warm-word';
+    word.textContent = nextWarmWord();
+    const rect = game.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    word.style.left = x + 'px';
+    word.style.top = y + 'px';
+    word.style.transform = 'translateX(-50%)';
+    game.appendChild(word);
+    setTimeout(() => word.remove(), 1400);
+
+    // Лопание сердечка
+    heart.style.transition = 'transform 0.15s, opacity 0.15s';
+    heart.style.transform = 'scale(1.6)';
+    heart.style.opacity = '0';
+    setTimeout(() => heart.remove(), 160);
+
+    // Немного конфетти каждые 5 сердечек
+    if (score % 5 === 0) burstConfetti(e.clientX, e.clientY, 6);
+  }
+
+  function startGame() {
+    score = 0;
+    timeLeft = GAME_TIME;
+    wordIndex = 0;
+    playing = true;
+    updateHud();
+    startOverlay.classList.add('hidden');
+    endOverlay.classList.add('hidden');
+
+    game.querySelectorAll('.heart').forEach(h => h.remove());
+
+    clearInterval(spawnTimer);
+    clearInterval(countdownTimer);
+
+    spawnTimer = setInterval(spawnHeart, SPAWN_INTERVAL);
+
+    countdownTimer = setInterval(() => {
+      timeLeft--;
+      updateHud();
+      if (timeLeft <= 0) endGame();
+    }, 1000);
+  }
+
+  function endGame() {
+    playing = false;
+    clearInterval(spawnTimer);
+    clearInterval(countdownTimer);
+
+    game.querySelectorAll('.heart').forEach(h => {
+      h.style.transition = 'opacity 0.3s';
+      h.style.opacity = '0';
+      setTimeout(() => h.remove(), 300);
+    });
+
+    // Финальное сообщение зависит от счёта
+    let title = '';
+    let text = '';
+
+    if (score >= 20) {
+      title = `Ты поймала ${score} сердечек!`;
+      text = 'Это рекорд, умочка! Но главное ты давно поймала моё. Мы вместе. Люблю тебя.';
+    } else if (score >= 10) {
+      title = `${score} сердечек отлично!`;
+      text = 'А моё сердце ты поймала с первого раза. Я тутааа. Мы вместе. Люблю тебя.';
+    } else if (score >= 1) {
+      title = `${score} и это только начало`;
+      text = 'Зато моё сердце ты поймала сразу. Не грусти, милая моя. Я тутааа. Люблю тебя.';
+    } else {
+      title = 'Ноль? Не страшно';
+      text = 'Главное ты уже поймала меня. Улыбнись, умочка. Я тутааа. Люблю тебя.';
+    }
+
+    endTitle.textContent = title;
+    endText.textContent = text;
+    endOverlay.classList.remove('hidden');
+
+    burstConfetti(window.innerWidth / 2, window.innerHeight / 2, 40);
+  }
+
+  startBtn.addEventListener('click', startGame);
+  restartBtn.addEventListener('click', startGame);
+
+  // ---------- Конфетти ----------
+  function burstConfetti(x, y, count) {
+    const emojis = ['💖', '💗', '💕', '✨', '💫'];
+    for (let i = 0; i < count; i++) {
+      const c = document.createElement('div');
+      c.className = 'confetti-heart';
+      c.textContent = emojis[Math.floor(Math.random() * emojis.length)];
+      c.style.left = (x + (Math.random() - 0.5) * 200) + 'px';
+      c.style.top = (y + (Math.random() - 0.5) * 80) + 'px';
+      c.style.fontSize = (14 + Math.random() * 14) + 'px';
+      c.style.animationDuration = (1.6 + Math.random() * 1.4) + 's';
+      c.style.animationDelay = (Math.random() * 0.3) + 's';
+      document.body.appendChild(c);
+      setTimeout(() => c.remove(), 3500);
+    }
+  }
+})();
+</script>
+</body>
+</html>
